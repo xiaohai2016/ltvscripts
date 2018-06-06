@@ -1,0 +1,107 @@
+-- BULLSEYE
+WITH latest_bullseye_update as (
+    SELECT
+        MAX(datestr) as latest_bullseye_update_date 
+    from segmentation.daily_rider_attributes 
+),
+
+latest_bullseye_labels as (
+    SELECT
+        uuid
+        
+        -- Signup labels
+        , is_signup_lite 
+        , is_uber_email
+        
+        -- Product labels
+        , is_eater 
+        
+        -- Lifecycle labels
+        , lifecycle_segment_regional --parent category of sub_segment_regional
+        , sub_segment_regional --child category of lifecycle_segment_regional
+        
+        -- Retention related labels
+        , churn_prediction_category
+        , is_comparison_shopper
+    
+    FROM segmentation.daily_rider_attributes dra
+    inner join latest_bullseye_update lbu on dra.datestr = lbu.latest_bullseye_update_date
+),
+
+
+
+-- PERSONALITY/FACTOR ANALYSIS
+lastest_personality_update as (
+    select
+        max(datestr) as latest_personality_update_date
+    from labs.rider_personality_usc
+),
+
+latest_personality_labels as (
+    select
+        client_uuid 
+        
+        -- Personality labels
+        , case when extra_factor_group = 1 then 'Low Extraversion'
+            when extra_factor_group = 2 then 'Medium Extraversion'
+            when extra_factor_group = 3 then 'High Extraversion'
+            end as extraversion_level
+        , case when con_factor_group = 1 then 'Low Conscientiousness'
+            when con_factor_group = 2 then 'Medium Conscientiousness'
+            when con_factor_group = 3 then 'High Conscientiousness'
+            end as conscientiousness_level
+        , case when agree_factor_group = 1 then 'Low Agreeableness'
+            when agree_factor_group = 2 then 'Medium Agreeableness'
+            when agree_factor_group = 3 then 'High Agreeableness'
+            end as agreeableness_level
+        , case when open_factor_group = 1 then 'Low Openness'
+            when open_factor_group = 2 then 'Medium Openness'
+            when open_factor_group = 3 then 'High Openness'
+            end as openness_level
+    
+    from labs.rider_personality_usc rpu
+    inner join lastest_personality_update lpu on rpu.datestr = lpu.latest_personality_update_date
+)
+
+
+
+-- FINAL COMBINATION
+SELECT
+    lr.user_uuid 
+    , ltv
+    
+    -- Geographic labels
+    , lr.city_id 
+    , dc.city_name
+    , dc.lat -- latitude 
+    , dc.lng -- longitude
+    , dc.region
+    , lr.mega_region
+    
+    -- Signup and Channel labels
+    , lr.channel
+    , bullseye.is_signup_lite 
+    , bullseye.is_uber_email 
+    
+    -- Product labels
+    , bullseye.is_eater 
+    
+    -- Lifecycle labels
+    , bullseye.lifecycle_segment_regional --parent category of sub_segment_regional
+    , bullseye.sub_segment_regional --child category of lifecycle_segment_regional
+    
+    -- Retention related labels
+    , bullseye.churn_prediction_category
+    , bullseye.is_comparison_shopper
+    
+    -- Personality labels
+    , personality.extraversion_level
+    , personality.conscientiousness_level
+    , personality.agreeableness_level
+    , personality.openness_level
+    
+from finance.ltv_rider lr
+left join dwh.dim_city dc on lr.city_id = dc.city_id 
+left join latest_bullseye_labels bullseye on lr.user_uuid = bullseye.uuid
+left join latest_personality_labels personality on lr.user_uuid = personality.client_uuid
+limit 1000

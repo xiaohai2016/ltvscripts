@@ -1,0 +1,27 @@
+CREATE TABLE IF NOT EXISTS ltv_rider (
+        user_uuid VARCHAR(64) PRIMARY KEY,
+        ltv FLOAT,
+        city_id INT,
+        city_name VARCHAR(32),
+        lat FLOAT,
+        lng FLOAT,
+        region VARCHAR(32),
+        mega_region VARCHAR(16),
+        channel VARCHAR(32),
+        is_signup_lite BOOLEAN,
+        is_uber_email BOOLEAN,
+        is_eater BOOLEAN,
+        lifecycle_segment_regional VARCHAR(32),
+        sub_segment_regional VARCHAR(64),
+        churn_prediction_category BOOLEAN,
+        is_comparison_shopper BOOLEAN,
+        extraversion_level VARCHAR(32),
+        conscientiousness_level VARCHAR(32),
+        agreeableness_level VARCHAR(32),
+        openness_level VARCHAR(32),
+
+        INDEX (city_id),
+        INDEX (region),
+        INDEX (mega_region),
+        INDEX (channel)
+    )

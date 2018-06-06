@@ -1,0 +1,160 @@
+-- BULLSEYE
+WITH latest_bullseye_update as (
+    SELECT
+        MAX(datestr) as latest_bullseye_update_date 
+    from segmentation.daily_driver_attributes 
+),
+
+latest_bullseye_labels as (
+    SELECT
+        uuid 
+        
+        -- Signup labels
+        , is_uber_email 
+        
+        -- Email and sms engagement
+        , is_subscribed_email
+        , is_subscribed_sms
+        
+        -- Lifecycle labels
+        , lifecycle
+        
+        --Retention related labels
+        , churn
+        , is_comparison_shopper
+    
+    FROM segmentation.daily_driver_attributes dra
+    inner join latest_bullseye_update lbu on dra.datestr = lbu.latest_bullseye_update_date
+),
+
+
+
+-- PERSONALITY
+lastest_personality_update as (
+    select
+        max(datestr) as latest_personality_update_date
+    from labs.driver_personality_usc
+),
+
+lastest_personality_labels as (
+    select
+        driver_uuid 
+        
+        -- Personality labels
+        , case when extra_factor_group = 1 then 'Low Extraversion'
+            when extra_factor_group = 2 then 'Medium Extraversion'
+            when extra_factor_group = 3 then 'High Extraversion'
+            end as extraversion_level
+        , case when con_factor_group = 1 then 'Low Conscientiousness'
+            when con_factor_group = 2 then 'Medium Conscientiousness'
+            when con_factor_group = 3 then 'High Conscientiousness'
+            end as conscientiousness_level
+        , case when agree_factor_group = 1 then 'Low Agreeableness'
+            when agree_factor_group = 2 then 'Medium Agreeableness'
+            when agree_factor_group = 3 then 'High Agreeableness'
+            end as agreeableness_level
+
+    from labs.driver_personality_usc dpu
+    inner join lastest_personality_update lpu on dpu.datestr = lpu.latest_personality_update_date
+),
+
+
+
+-- CANONICAL DRIVER SEGMENTS/ENGAGEMENT
+latest_engagement_update as (
+    SELECT
+        MAX(datestr) as latest_engagement_update_date
+    from driver.driver_segment_engagement
+),
+
+latest_engagement_label as (
+    SELECT
+        driver_uuid
+        , engagement 
+    from driver.driver_segment_engagement dseng
+    inner join latest_engagement_update lengu on dseng.datestr = lengu.latest_engagement_update_date
+),
+
+
+
+-- CANONICAL DRIVER SEGMENTS/EXPERIENCE
+latest_experience_update as (
+    SELECT
+        max(datestr) as latest_experience_update_date
+    from driver.driver_segment_experience
+),
+
+latest_experience_label as (
+    SELECT
+        driver_uuid 
+        , experience 
+    from driver.driver_segment_experience dsexp 
+    inner join latest_experience_update lexpu on dsexp.datestr = lexpu.latest_experience_update_date
+),
+
+
+
+-- CANONICAL DRIVER SEGMENTS/TENURE
+latest_tenure_update as (
+    SELECT
+        max(datestr) as latest_tenure_update_date
+    from driver.driver_segment_experience
+),
+
+latest_tenure_label as (
+    SELECT
+        driver_uuid 
+        , tenure 
+    from driver.driver_segment_tenure dst 
+    inner join latest_tenure_update ltu on dst.datestr = ltu.latest_tenure_update_date
+)
+
+
+
+-- FINAL COMBINATION
+SELECT
+    ld.driver_uuid 
+    , ltv
+    
+    -- Geographic labels
+    , ld.city_id 
+    , dc.city_name 
+    , dc.lat -- latitude 
+    , dc.lng -- longitude
+    , dc.region
+    , ld.mega_region
+    
+    -- Signup and Channel labels
+    , ld.channel
+    , ld.driver_flow
+    , bullseye.is_uber_email 
+    
+    -- Engagement
+    , bullseye.is_subscribed_email
+    , bullseye.is_subscribed_sms
+    , engagement.engagement
+    
+    -- Experience 
+    , experience.experience
+    
+    -- Personality
+    , personality.extraversion_level
+    , personality.conscientiousness_level
+    , personality.agreeableness_level
+    
+    -- Lifecycle labels
+    , bullseye.lifecycle
+    , tenure.tenure
+
+    -- Retention related labels
+    , bullseye.churn
+    , bullseye.is_comparison_shopper
+    
+from finance.ltv_driver ld
+left join dwh.dim_city dc on ld.city_id = dc.city_id 
+left join latest_bullseye_labels bullseye on ld.driver_uuid = bullseye.uuid
+left join lastest_personality_labels personality on ld.driver_uuid = personality.driver_uuid
+left join latest_engagement_label engagement on ld.driver_uuid = engagement.driver_uuid 
+left join latest_experience_label experience on ld.driver_uuid = experience.driver_uuid 
+left join latest_tenure_label tenure on ld.driver_uuid = tenure.driver_uuid 
+limit 1000
