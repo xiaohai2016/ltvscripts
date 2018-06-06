@@ -20,4 +20,4 @@ git clone https://github.com/xiaohai2016/ltvscripts
 
 ### How to query LTV curated tables
 * You can test by directly running query_ltv_tables.py.
-* You invoke the endpoint represented by "fdp_http_api.queryData" anyway you'd like (e.g. curl). Refer to the invocation of fdp_http_api.queryData in .
+* You invoke the endpoint represented by "fdp_http_api.queryData" anyway you'd like (e.g. curl). Refer to the invocation of fdp_http_api.queryData in query_ltv_tables.py.
